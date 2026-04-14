@@ -21,7 +21,7 @@ pacman -Syu postgresql redis git nodejs npm base-devel
 
 `-Syu` to make sure the all other dependencies are up-to-date too.
 
-For Rust and Cargo, i recommend you to install it with Rustup (https://rust-lang.org/learn/get-started/)
+For Rust and Cargo, i recommend you to install it with [Rustup](https://rust-lang.org/learn/get-started/):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
