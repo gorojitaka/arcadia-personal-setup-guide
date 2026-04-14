@@ -11,7 +11,7 @@ As the official guide, you must have these prerequisites:
 - Rust & Cargo
 - Node.js & npm
 - Git
-- base-devel (to have all dependencies for compilation)
+- base-devel (to have all dependencies for Rust compilation)
 
 On Arch, these can be installed with this command:
 
@@ -116,7 +116,7 @@ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE arcadia TO arcadia;"
 
     6. For `tracker/arcadia_tracker/.env` set these values:
 
-       - `API_KEY` with the same key you set in `backend/api/.en`
+       - `API_KEY` with the same key you set in `backend/api/.env`
        - Uncomment the `REVERSE_PROXY_CLIENT_IP_HEADER_NAME` variable
        - `DATABASE_URL` to `postgresql://arcadia:DB_ARCADIA_USER_PASSWD@127.0.0.1:5432/arcadia` with `DB_ARCADIA_USER_PASSWD` being the password you set on the Postgres setup
 
@@ -302,56 +302,36 @@ server {
 
 After this set, you can now open `https://your-tracker-name.com` and it will show up the login page.
 
-## Update the default user
+## Create a new user and update its permissions
 
-Now you'll see that if you try to connect with the default `creator` user with no password (as their is no password for this user in the DB), you'll get a unknown error. To fix this, you have to manually input a password hash into the DB for that user.
+You can go to `https://your-tracker-name.com/register` and simply register a new user.
 
-Me i use DBeaver as my DB manager, its pretty cool since it has a GUI. But to use DBeaver from your computer to access the db on the Arcadia host, you need to change two things:
+After we registered our new user, this one has no permission yet. To fix this, you have to manually input the permissions into the DB for that user.
 
-1. First Postgres listen to 127.0.0.1 by default. To made it to listen on global, change this in `/var/lib/postgres/data/postgresql.conf`:
-
-    - `listen_address` to `0.0.0.0`
-  
-2. Second, even if Postgres listen on all interface, you will not be able to connect from your computer IP because it is not whitelisted in Postgres HBA config. Open `/var/lib/postgres/data/pg_hba.conf` and at the end of the file, add this:
-
-    ```txt
-    host    all             all             YOU_COMPUTER_IP/32            trust
-    ```
-
-3. Then restart Postgres:
-
-    But before that, make sure to stop Arcadia's tracker and API
-    
-    ```bash
-    systemctl restart postgresql.service
-    ```
-----
-Then in DBeaver:
+Me i use DBeaver as my DB manager, its pretty cool since it has a GUI. For security reason, you can connect from your DBeaver to the Arcadia's Postgres via a SSH tunnel.
 
 1. Create a new connection using the blue icon on the top left:
 ![connection_button](assets/1_dbeaver_create_connection_button.png)
 2. Choose PostgresSQL for the database connection:
 ![connection_button](assets/2_dbeaver_database_connection.png)
-3. On the connection settings page, set the Host input to your Arcadia host IP, the database name to `arcadia`, and then click `Finish`:
+3. On the connection settings page, first set Host input to `127.0.0.1`, the database name to `arcadia`, and then click `+ SSH, SSL, ...` button and choose `SSH:
 ![connection_button](assets/3_dbeaver_connection_settings.png)
-4. Connect to the DB by double clicking on its entry in the Database Navigator column on the left:
+4. In the SSH settings tab, enter the Arcadia host IP and the user you want to connect as:
+![connection_button](assets/3-2_dbeaver_ssh_tunnel_settings.png)
+For the `Authentication Method` option, it's up to you to choose what you want. For me, i have my ssh-agent running that can deliver ssh keys to programs. Once you did that, click `OK`
+5. Connect to the DB by double clicking on its entry in the Database Navigator column on the left:
 ![connection_button](assets/4_dbeaver_connect_to_db.png)
-5. DBeaver will then ask you to download the required files for the Postgres driver, simply click `Download`:
+6. DBeaver will show a warning pop-up saying that the authenticity of the remote host can't be establish. And it will ask you if you want to continue, simple click `Yes`.
+7. DBeaver will then ask you to download the required files for the Postgres driver, simply click `Download`:
 ![connection_button](assets/5_dbeaver_download_driver.png)
-6. When download finished, go open the `users` table:
+8. When download finished, go open the `users` table:
 ![connection_button](assets/6_dbeaver_open_users_table.png)
-7. Now you can see that we have our default `creator` user with no password in the `password_hash` column. You can input this below inside that column, this hash is for `test`:
-
-    ```plain
-    $argon2id$v=19$m=19456,t=2,p=1$s4XJtCUk9IrGgNsTfP6Ofw$ktoGbBEoFaVgdiTn19Gh9h45LjFiv7AUEL5KHhzm4d0
-    ```
-
-    We will also add all permissions to that user since this is the Arcadia's admin. For this, input the text bellow into the `permissions` column:
+9. And input this below into the `permissions` column for the new user created (for all permissions):
 
     ```plain
     {download_torrent,create_torrent_request,immune_activity_pruning,create_forum_thread,create_forum_post,send_pm,view_torrent_peers,edit_collage,edit_torrent,set_user_custom_title,link_similar_wiki_articles,edit_wiki_article,create_wiki_article,delete_forum_post,edit_forum_post,edit_forum_thread,edit_title_group,edit_title_group_comment,edit_edition_group,edit_artist,edit_series,edit_torrent_request,edit_title_group_tag,move_torrent_to_other_edition_group,delete_edition_group,edit_torrent_up_down_factors,view_stats_details,merge_title_group,delete_collage_entry,search_user_edit_change_logs,delete_torrent,delete_title_group_tag,delete_series,remove_title_group_from_series,delete_artist,delete_title_group,read_staff_pm,reply_staff_pm,unresolve_staff_pm,resolve_staff_pm,set_torrent_staff_checked,upload_torrent,pin_forum_thread,delete_forum_category,delete_forum_sub_category,delete_forum_thread,lock_forum_thread,edit_forum_sub_category,edit_forum_category,create_forum_category,create_forum_sub_category,delete_collage,create_css_sheet,edit_css_sheet,warn_user,ban_user,edit_user,edit_user_permissions,lock_user_class,change_user_class,search_unauthorized_access,see_foreign_torrent_clients,search_donation,edit_donation,edit_user_class,create_user_class,get_user_application,update_user_application,delete_user_class,edit_arcadia_settings,create_donation,delete_donation,delete_user_edit_change_log,delete_torrent_report}
     ```
 
-    After you input these two things, you can save it with <kbd>CTRL</kbd> + <kbd>s</kbd>
+    After you input this, you can save it with <kbd>CTRL</kbd> + <kbd>s</kbd>
 
-Now you will be able to login with the creds `creator`/`test`.
+Now you have a new account with full permission that you can use to manage the instance.
